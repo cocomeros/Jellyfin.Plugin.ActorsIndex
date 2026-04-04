@@ -1,18 +1,17 @@
 name: '🚀 Publish Plugin'
 
+# This workflow publishes to the official Jellyfin catalog.
+# Disabled: plugin is distributed via manifest.json in this repository.
 on:
-  release:
-    types:
-      - released
   workflow_dispatch:
+    inputs:
+      disabled:
+        description: 'Not used'
+        required: false
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@master
-    with:
-      version: ${{ github.event.release.tag_name }}
-      is-unstable: ${{ github.event.release.prerelease }}
-    secrets:
-      deploy-host: ${{ secrets.DEPLOY_HOST }}
-      deploy-user: ${{ secrets.DEPLOY_USER }}
-      deploy-key: ${{ secrets.DEPLOY_KEY }}
+  placeholder:
+    runs-on: ubuntu-latest
+    if: false
+    steps:
+      - run: echo "disabled"
