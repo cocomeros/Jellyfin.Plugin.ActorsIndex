@@ -1,0 +1,21 @@
+[
+  {
+    "category": "General",
+    "guid": "17d0c3ac-c0d1-48d7-ba4e-57cb9dac7fa2",
+    "imageUrl": "https://raw.githubusercontent.com/cocomeros/Jellyfin.Plugin.ActorsIndex/main/Jellyfin.Plugin.ActorsIndex/Images/thumb.png",
+    "name": "Actors Index",
+    "description": "Scansiona la libreria Jellyfin e costruisce un indice di tutti gli attori con griglia fotografica, ricerca, paginazione e pulsante Home iniettabile.",
+    "overview": "Sfoglia tutti gli attori della tua libreria con conteggio apparizioni.",
+    "owner": "cocomeros",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial public release.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/cocomeros/Jellyfin.Plugin.ActorsIndex/releases/download/v1.0.0.0/Jellyfin.Plugin.ActorsIndex_1.0.0.0.zip",
+        "checksum": "2a1b6b2199f1b4db5494acd86fa3e74e",
+        "timestamp": "2026-04-04T00:00:00.0000000Z"
+      }
+    ]
+  }
+]
