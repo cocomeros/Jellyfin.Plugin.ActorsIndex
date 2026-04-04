@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Jellyfin.Plugin.Template.Configuration;
+using Jellyfin.Plugin.ActorsIndex.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 
-namespace Jellyfin.Plugin.Template;
+namespace Jellyfin.Plugin.ActorsIndex;
 
 /// <summary>
 /// The main plugin.
@@ -26,10 +26,10 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     }
 
     /// <inheritdoc />
-    public override string Name => "Template";
+    public override string Name => "Actors Index";
 
     /// <inheritdoc />
-    public override Guid Id => Guid.Parse("eb5d7894-8eef-4b36-aa6f-5d124e828ce1");
+    public override Guid Id => Guid.Parse("17d0c3ac-c0d1-48d7-ba4e-57cb9dac7fa2");
 
     /// <summary>
     /// Gets the current plugin instance.
@@ -44,7 +44,23 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             new PluginPageInfo
             {
                 Name = Name,
-                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.configPage.html", GetType().Namespace)
+                DisplayName = "Actors Index - Impostazioni",
+                EmbeddedResourcePath = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}.Configuration.configPage.html",
+                    GetType().Namespace)
+            },
+            new PluginPageInfo
+            {
+                Name = "ActorsBrowse",
+                DisplayName = "Indice Attori",
+                EnableInMainMenu = true,
+                MenuSection = "library",
+                MenuIcon = "people",
+                EmbeddedResourcePath = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}.Configuration.actorsBrowse.html",
+                    GetType().Namespace)
             }
         ];
     }

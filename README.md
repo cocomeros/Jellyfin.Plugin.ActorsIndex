@@ -1,32 +1,92 @@
-# So you want to make a Jellyfin plugin
+# Jellyfin Actors Index Plugin
 
-Awesome! This guide is for you. Jellyfin plugins are written using the dotnet standard framework. What that means is you can write them in any language that implements the CLI or the DLI and can compile to net8.0. The examples on this page are in C# because that is what most of Jellyfin is written in, but F#, Visual Basic, and IronPython should all be compatible once compiled.
+A [Jellyfin](https://jellyfin.org) plugin that builds a browsable index of all actors in your media library, with appearance counts, thumbnails, and direct navigation to their biography page.
 
-## 0. Things you need to get started
+## Features
 
-- [Dotnet SDK 9.0](https://dotnet.microsoft.com/en-us/download/dotnet)
+- **Actors Index page** — full-screen grid of all actors/actresses, sortable by appearances or name A→Z
+- **Search** — real-time filter by actor name
+- **Pagination** — configurable page size (default 60 actors per page)
+- **Floating home button** — inject a persistent 🎬 button on all Jellyfin pages for one-click access
+- **Channel integration** — actors accessible as a Jellyfin channel in the home screen sidebar
+- **Minimum appearances filter** — hide actors with fewer than N appearances
+- **API endpoints** — `/ActorsIndex/actors-index`, `/ActorsIndex/library-stats`, and more
 
-- An editor of your choice. Some free choices are:
+## Screenshots
 
-   [Visual Studio Code](https://code.visualstudio.com)
+> *Coming soon*
 
-   [Visual Studio Community Edition](https://visualstudio.microsoft.com/downloads)
+## Requirements
 
-   [Mono Develop](https://www.monodevelop.com)
+- Jellyfin **10.11.x** or later
+- .NET 9 runtime (bundled with Jellyfin 10.11+)
 
-## 0.5. Quickstarts
+## Installation
 
-We have a number of quickstart options available to speed you along the way.
+### Option A — Add the custom repository (recommended)
 
-- [Download the Example Plugin Project](https://github.com/jellyfin/jellyfin-plugin-template/tree/master/Jellyfin.Plugin.Template) from this repository, open it in your IDE and go to [step 3](https://github.com/jellyfin/jellyfin-plugin-template#3-customize-plugin-information)
+1. In Jellyfin, go to **Dashboard → Plugins → Repositories**
+2. Click **+** and add:
+   - Name: `Actors Index`
+   - URL: `https://raw.githubusercontent.com/cocomeros/Jellyfin.Plugin.ActorsIndex/master/manifest.json`
+3. Go to **Dashboard → Plugins → Catalog**, find **Actors Index**, click **Install**
+4. Restart Jellyfin
 
-- Install our dotnet template by [downloading the dotnet-template/content folder from this repo](https://github.com/jellyfin/jellyfin-plugin-template/tree/master/dotnet-template/content) or off of Nuget (Coming soon)
+### Option B — Manual installation
 
-   ```
-   dotnet new -i /path/to/templatefolder
-   ```
+1. Download the latest `Jellyfin.Plugin.ActorsIndex_x.x.x.x.zip` from the [Releases](https://github.com/cocomeros/Jellyfin.Plugin.ActorsIndex/releases) page
+2. Extract and copy all files into your Jellyfin plugins folder:
+   - **Linux**: `/var/lib/jellyfin/plugins/ActorsIndex/`
+   - **Windows**: `%LOCALAPPDATA%\jellyfin\plugins\ActorsIndex\`
+3. Restart Jellyfin
 
-- Run this command then skip to step 4
+## First-use setup
+
+After installing and restarting Jellyfin:
+
+1. Go to **Dashboard → Plugins → Actors Index → Settings**
+2. *(Optional)* Enable the plugin and set minimum appearances
+3. In the **"Pulsante nella Home"** section, click **🎬 Inietta pulsante nella Home** — this adds a persistent floating button on every Jellyfin page
+
+> **Note (Linux only):** The inject feature requires write permission on `/usr/share/jellyfin/web/index.html`.
+> To grant it permanently, add a systemd drop-in:
+> ```bash
+> sudo mkdir -p /etc/systemd/system/jellyfin.service.d
+> sudo tee /etc/systemd/system/jellyfin.service.d/fix-webroot-perms.conf << 'EOF'
+> [Service]
+> ExecStartPre=/bin/chown root:jellyfin /usr/share/jellyfin/web/index.html
+> ExecStartPre=/bin/chmod 664 /usr/share/jellyfin/web/index.html
+> EOF
+> sudo systemctl daemon-reload
+> ```
+> After a Jellyfin update, click **Inietta** again to restore the button.
+
+## Maintenance
+
+### After a Jellyfin update
+
+If the floating button disappears, go to **Settings → Pulsante nella Home → 🎬 Inietta pulsante nella Home**.
+
+### Phantom seasons / duplicate episodes
+
+If the library shows phantom seasons (e.g. "Season 20", "Unknown Season") caused by metadata provider runs:
+
+1. Go to **Dashboard → Scheduled Tasks → Clean up media library** and run it
+2. Or right-click the series → **Refresh metadata → Replace all metadata** (then re-run the task)
+
+## Building from source
+
+```bash
+git clone https://github.com/YOUR_GITHUB_USER/Jellyfin.Plugin.ActorsIndex.git
+cd Jellyfin.Plugin.ActorsIndex
+dotnet publish --configuration=Release Jellyfin.Plugin.ActorsIndex.sln
+```
+
+Output: `Jellyfin.Plugin.ActorsIndex/bin/Release/net9.0/publish/`
+
+## License
+
+[GPL-3.0](LICENSE)
 
    ```
       dotnet new Jellyfin-plugin -name MyPlugin

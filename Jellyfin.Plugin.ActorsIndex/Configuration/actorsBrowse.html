@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Indice Attori</title>
+</head>
+<body>
+
+<div id="ab-page" data-role="page" class="page">
+
+<style>
+    .content-primary, .padded-top, .padded-left, .padded-right, .padded-bottom {
+        padding: 0 !important; max-width: none !important;
+    }
+    #ab-header { text-align: center; padding: 14px 16px 10px; position: fixed; top: 60px; left: 0; right: 0; z-index: 150; background: #111; }
+    #ab-title { font-size: 2.6em; font-weight: bold; display: block; margin-bottom: 16px; }
+    #ab-version { font-size: 0.38em; opacity: 0.5; margin-left: 8px; vertical-align: middle; }
+
+    /* Riga ricerca + paginazione */
+    #ab-search-row {
+        display: flex; align-items: center; justify-content: center;
+        gap: 10px; max-width: 820px; margin: 0 auto;
+    }
+    #ab-search {
+        flex: 1; min-width: 160px; max-width: 480px; padding: 10px 18px;
+        border-radius: 6px; background: #2a2a2a; border: 1px solid #444;
+        color: #fff; font-size: 1.45em;
+    }
+    #ab-search:focus { outline: 2px solid #0097e6; border-color: #0097e6; }
+
+    /* Paginazione */
+    #ab-pager { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .ab-pg-btn {
+        padding: 8px 12px; border-radius: 4px; cursor: pointer;
+        background: #2a2a2a; border: 1px solid #555; color: #ccc;
+        font-size: 1em; font-weight: bold; min-width: 38px; text-align: center;
+    }
+    .ab-pg-btn:disabled { opacity: 0.3; cursor: default; }
+    .ab-pg-btn:hover:not(:disabled) { background: #383838; }
+    #ab-pg-info { color: #aaa; font-size: 0.9em; min-width: 52px; text-align: center; white-space: nowrap; }
+
+    /* Status (dentro header sticky) */
+    #ab-status { padding: 4px 16px; color: #aaa; font-size: 0.88em; text-align: center; margin-top: 6px; }
+
+    /* Sort buttons — riga orizzontale dentro header sticky */
+    #ab-sort-wrap { display: flex; flex-direction: row; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .ab-sort-btn { padding: 8px 20px; border-radius: 4px; cursor: pointer; background: #2a2a2a; border: 1px solid #555; color: #ccc; font-size: 0.95em; white-space: nowrap; }
+    .ab-sort-btn.active { background: #0097e6; border-color: #0097e6; color: #fff; }
+    .ab-sort-btn:hover:not(.active) { background: #383838; }
+
+    /* Griglia - esattamente 7 colonne */
+    #ab-grid { padding: 14px 16px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 240px; /* fallback, sovrascritto da JS */ }
+    .ab-card { background: #1c1c1c; border-radius: 6px; overflow: hidden; cursor: pointer; border: 2px solid transparent; outline: none; }
+    .ab-card:hover, .ab-card:focus { border-color: #0097e6; }
+    .ab-card-img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; background: #2a2a2a; }
+    .ab-card-placeholder { width: 100%; aspect-ratio: 2/3; background: #252525; display: flex; align-items: center; justify-content: center; font-size: 3em; color: #444; }
+    .ab-card-info { padding: 6px 8px; }
+    .ab-card-name { font-size: 0.80em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ab-card-count { font-size: 0.72em; color: #777; margin-top: 2px; }
+
+    /* Modal */
+    #ab-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.88); z-index: 300; justify-content: center; align-items: center; }
+    #ab-overlay.open { display: flex; }
+    #ab-modal { background: #1e1e1e; border-radius: 8px; padding: 24px 28px; width: 90vw; max-width: 620px; max-height: 88vh; overflow-y: auto; position: relative; }
+    #ab-modal-close { position: absolute; top: 14px; right: 18px; background: none; border: none; color: #999; font-size: 1.6em; cursor: pointer; line-height: 1; padding: 0; }
+    #ab-modal-close:hover { color: #fff; }
+    #ab-modal-header { display: flex; gap: 16px; margin-bottom: 18px; }
+    #ab-modal-img { width: 90px; height: 126px; object-fit: cover; border-radius: 4px; background: #2a2a2a; flex-shrink: 0; }
+    #ab-modal-name { margin: 0 0 6px; font-size: 1.25em; }
+    #ab-modal-count { color: #888; font-size: 0.9em; }
+    #ab-modal-list { list-style: none; padding: 0; margin: 0; }
+    #ab-modal-list li { padding: 7px 0; border-bottom: 1px solid #2e2e2e; }
+    #ab-modal-list li:last-child { border-bottom: none; }
+    #ab-modal-list a { color: #ccc; text-decoration: none; }
+    #ab-modal-list a:hover { color: #0097e6; }
+    .ab-role { color: #777; }
+</style>
+
+    <div id="ab-header">
+        <span id="ab-title">&#127914; Indice Attori<span id="ab-version">(v.27)</span></span>
+        <div id="ab-search-row">
+            <input type="text" id="ab-search" placeholder="Cerca attore&#8230;" autocomplete="off" />
+            <div id="ab-pager">
+                <button class="ab-pg-btn" id="ab-pg-first" title="Prima pagina">|&#8249;</button>
+                <button class="ab-pg-btn" id="ab-pg-prev"  title="Precedente">&#8249;</button>
+                <span id="ab-pg-info">&#8211;</span>
+                <button class="ab-pg-btn" id="ab-pg-next"  title="Successiva">&#8250;</button>
+                <button class="ab-pg-btn" id="ab-pg-last"  title="Ultima pagina">&#8250;|</button>
+            </div>
+        </div>
+        <div id="ab-sort-wrap">
+            <button class="ab-sort-btn" id="ab-settings-link">&#9881; Impostazioni</button>
+            <button class="ab-sort-btn active" id="ab-sort-app">Apparizioni &#8595;</button>
+            <button class="ab-sort-btn" id="ab-sort-name">Nome A&#8594;Z</button>
+        </div>
+        <div id="ab-status">In attesa&#8230;</div>
+    </div>
+
+    <div id="ab-grid"></div>
+
+    <div id="ab-overlay" role="dialog" aria-modal="true" aria-labelledby="ab-modal-name">
+        <div id="ab-modal">
+            <button id="ab-modal-close" aria-label="Chiudi">&#10005;</button>
+            <div id="ab-modal-header">
+                <img id="ab-modal-img" alt="" />
+                <div><h2 id="ab-modal-name"></h2><div id="ab-modal-count"></div></div>
+            </div>
+            <ul id="ab-modal-list"></ul>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    (function () {
+        'use strict';
+        var PAGE_SIZE = 60, allActors = [], currentSort = 'appearances';
+        var searchTerm = '', currentPage = 0, filteredActors = [], searchTimer = null;
+
+        function esc(s) {
+            return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function personImgUrl(id) {
+            if (!id) { return ''; }
+            try { return ApiClient.getUrl('Items/'+id+'/Images/Primary',{maxWidth:300,quality:80}); }
+            catch(e) { return window.location.origin+'/Items/'+id+'/Images/Primary?maxWidth=300&quality=80'; }
+        }
+        function getFiltered() {
+            var term = searchTerm.toLowerCase().trim();
+            var list = term ? allActors.filter(function(a){return a.name.toLowerCase().indexOf(term)!==-1;}) : allActors;
+            return list.slice().sort(function(a,b){
+                return currentSort==='appearances' ? (b.appearances-a.appearances)||a.name.localeCompare(b.name) : a.name.localeCompare(b.name);
+            });
+        }
+        function makeCard(actor) {
+            var card = document.createElement('div');
+            card.className = 'ab-card'; card.tabIndex = 0;
+            var url = personImgUrl(actor.personId);
+            card.innerHTML =
+                (url ? '<img class="ab-card-img" src="'+esc(url)+'" loading="lazy" alt="">' : '<div class="ab-card-placeholder">&#128100;</div>') +
+                '<div class="ab-card-info"><div class="ab-card-name">'+esc(actor.name)+'</div>' +
+                '<div class="ab-card-count">'+actor.appearances+' titol'+(actor.appearances===1?'o':'i')+'</div></div>';
+            card.addEventListener('click', function(){openActor(actor);});
+            card.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();openActor(actor);} });
+            return card;
+        }
+        function openActor(actor) {
+            if (!actor.personId) { openModal(actor); return; }
+            var srv=''; try{srv=ApiClient.serverId();}catch(e){}
+            var path='/details?id='+actor.personId+(srv?'&serverId='+srv:'');
+            if (window.Emby&&window.Emby.Page&&window.Emby.Page.show) { window.Emby.Page.show(path); }
+            else { window.location.hash=path; }
+        }
+        function updatePager() {
+            var total = filteredActors.length;
+            var totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+            document.getElementById('ab-pg-info').textContent = (currentPage+1)+' / '+totalPages;
+            document.getElementById('ab-pg-first').disabled = (currentPage === 0);
+            document.getElementById('ab-pg-prev').disabled  = (currentPage === 0);
+            document.getElementById('ab-pg-next').disabled  = (currentPage >= totalPages - 1);
+            document.getElementById('ab-pg-last').disabled  = (currentPage >= totalPages - 1);
+            var from = total === 0 ? 0 : currentPage * PAGE_SIZE + 1;
+            var to   = Math.min((currentPage+1) * PAGE_SIZE, total);
+            var txt  = total === 0 ? 'Nessun risultato.' :
+                'Attori '+from+'\u2013'+to+' di '+total+
+                (total < allActors.length ? ' (filtrati su '+allActors.length+' totali)' : '')+'.';
+            document.getElementById('ab-status').textContent = txt;
+        }
+        function scrollToTop() {
+            var el = document.getElementById('ab-grid');
+            while (el && el !== document.body) {
+                el = el.parentElement;
+                if (!el) { break; }
+                var st = window.getComputedStyle(el);
+                if (/auto|scroll/.test(st.overflow + st.overflowY) && el.scrollHeight > el.clientHeight) {
+                    el.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                }
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        function renderPage() {
+            var grid = document.getElementById('ab-grid');
+            grid.innerHTML = '';
+            var slice = filteredActors.slice(currentPage*PAGE_SIZE, (currentPage+1)*PAGE_SIZE);
+            var frag = document.createDocumentFragment();
+            slice.forEach(function(a){ frag.appendChild(makeCard(a)); });
+            grid.appendChild(frag);
+            updatePager();
+            scrollToTop();
+        }
+        function refresh() {
+            currentPage = 0;
+            filteredActors = getFiltered();
+            renderPage();
+        }
+        function openModal(actor) {
+            document.getElementById('ab-modal-name').textContent=actor.name;
+            document.getElementById('ab-modal-count').textContent=actor.appearances+' apparizione'+(actor.appearances===1?'':'i');
+            var img=document.getElementById('ab-modal-img'), url=personImgUrl(actor.personId);
+            img.style.display=url?'':'none'; if(url){img.src=url;}
+            var list=document.getElementById('ab-modal-list'); list.innerHTML='';
+            (actor.items||[]).forEach(function(item){
+                var li=document.createElement('li'), base;
+                try{base=ApiClient.serverAddress();}catch(e){base=window.location.origin;}
+                li.innerHTML='<a href="'+esc(base+'/web/index.html#/details?id='+item.itemId)+'">'+esc(item.itemName)+(item.role?' <em class="ab-role">\u2014 '+esc(item.role)+'</em>':'')+' </a>';
+                list.appendChild(li);
+            });
+            document.getElementById('ab-overlay').classList.add('open');
+            document.getElementById('ab-modal-close').focus();
+        }
+        function closeModal() { document.getElementById('ab-overlay').classList.remove('open'); }
+
+        function setGridOffset() {
+            var hdr = document.getElementById('ab-header');
+            var grid = document.getElementById('ab-grid');
+            if (hdr && grid) { grid.style.marginTop = (hdr.offsetHeight + 60) + 'px'; }
+        }
+
+        function init() {
+            var totalPages = function(){ return Math.max(1, Math.ceil(filteredActors.length/PAGE_SIZE)); };
+            document.getElementById('ab-pg-first').addEventListener('click', function(){ currentPage=0; renderPage(); });
+            document.getElementById('ab-pg-prev').addEventListener('click',  function(){ if(currentPage>0){currentPage--;renderPage();} });
+            document.getElementById('ab-pg-next').addEventListener('click',  function(){ if(currentPage<totalPages()-1){currentPage++;renderPage();} });
+            document.getElementById('ab-pg-last').addEventListener('click',  function(){ currentPage=totalPages()-1; renderPage(); });
+            document.getElementById('ab-search').addEventListener('input', function(){
+                var val=this.value; clearTimeout(searchTimer);
+                searchTimer=setTimeout(function(){searchTerm=val;refresh();},260);
+            });
+            document.getElementById('ab-sort-app').addEventListener('click', function(){
+                currentSort='appearances';
+                document.getElementById('ab-sort-app').classList.add('active');
+                document.getElementById('ab-sort-name').classList.remove('active');
+                refresh();
+            });
+            document.getElementById('ab-sort-name').addEventListener('click', function(){
+                currentSort='name';
+                document.getElementById('ab-sort-name').classList.add('active');
+                document.getElementById('ab-sort-app').classList.remove('active');
+                refresh();
+            });
+            document.getElementById('ab-modal-close').addEventListener('click', closeModal);
+            document.getElementById('ab-overlay').addEventListener('click', function(e){ if(e.target===this){closeModal();} });
+            document.addEventListener('keydown', function(e){ if(e.key==='Escape'||e.key==='XF86Back'){closeModal();} });
+            document.getElementById('ab-settings-link').addEventListener('click', function() {
+                var p = '/configurationpage?name=Actors+Index';
+                if (window.Emby && window.Emby.Page && window.Emby.Page.show) { window.Emby.Page.show(p); }
+                else { window.location.hash = p; }
+            });
+            setGridOffset();
+            window.addEventListener('resize', setGridOffset);
+
+            var statusEl = document.getElementById('ab-status');
+            statusEl.textContent = 'Caricamento\u2026';
+            var url = ApiClient.getUrl('ActorsIndex/actors-index');
+            fetch(url, { headers: { 'X-Emby-Authorization': 'MediaBrowser Token="'+ApiClient.accessToken()+'"' } })
+                .then(function(r){ if(!r.ok){throw new Error('HTTP '+r.status);} return r.json(); })
+                .then(function(result){
+                    allActors=(result&&result.actors)||[];
+                    if(allActors.length===0){ statusEl.textContent='Nessun attore trovato.'; } else { refresh(); }
+                    setGridOffset();
+                })
+                ['catch'](function(err){ statusEl.textContent='Errore: '+err; });
+        }
+
+        $('#ab-page').on('pageshow', init);
+
+    }());
+    </script>
+
+</div>
+
+</body>
+</html>

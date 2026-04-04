@@ -1,0 +1,343 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Actors Index</title>
+    <style>
+        /* â”€â”€ Layout helpers â”€â”€ */
+        .ai-section          { margin-top: 2em; }
+        .ai-status           { margin-top: 1em; font-style: italic; }
+
+        /* â”€â”€ Actors-browse link styled as button â”€â”€ */
+        .ai-browse-link      { display: inline-flex; align-items: center; gap: 8px;
+                               text-decoration: none; margin-bottom: 12px; }
+        .ai-load-btn         { margin-left: 8px; }
+
+        /* â”€â”€ Actors table â”€â”€ */
+        .ai-table-wrap       { margin-top: 1em; overflow-x: auto; }
+        .ai-table-wrap.ai-hidden { display: none; }
+        .ai-table            { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+        .ai-th               { text-align: left; padding: 6px 10px;
+                               border-bottom: 2px solid #555; }
+        .ai-th--center       { text-align: center; width: 80px; }
+        .ai-td               { padding: 4px 10px; vertical-align: top; }
+        .ai-td--center       { text-align: center; padding: 4px 10px; vertical-align: top; }
+        .ai-td--small        { padding: 4px 10px; vertical-align: top; font-size: 0.9em; }
+        .ai-link             { color: inherit; }
+    </style>
+</head>
+<body>
+    <div id="ActorsIndexConfigPage"
+         data-role="page"
+         class="page type-interior pluginConfigurationPage"
+         data-require="emby-input,emby-button,emby-checkbox">
+
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="ActorsIndexConfigForm">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Actors Index</h2>
+                    </div>
+
+                    <div class="verticalSection">
+                        <p>Configurazione del plugin Actors Index.</p>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <!-- is="emby-checkbox" is required by the Jellyfin web framework -->
+                            <input is="emby-checkbox" type="checkbox" id="Enabled" />
+                            <span>Abilita plugin</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            Attiva o disattiva il plugin.
+                        </div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="MinimumAppearances">Numero minimo apparizioni</label>
+                        <!-- is="emby-input" is required by the Jellyfin web framework -->
+                        <input is="emby-input" type="number" id="MinimumAppearances" min="1" step="1" />
+                        <div class="fieldDescription">
+                            Numero minimo di apparizioni richieste per mostrare un attore nell'indice.
+                        </div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <!-- is="emby-checkbox" is required by the Jellyfin web framework -->
+                            <input is="emby-checkbox" type="checkbox" id="ShowRoleName" />
+                            <span>Mostra nome ruolo</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            Mostra anche il ruolo/character name quando disponibile.
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- is="emby-button" is required by the Jellyfin web framework -->
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- ===== Strumenti Canale ===== -->
+                <div class="verticalSection ai-section">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Strumenti Canale</h2>
+                    </div>
+                    <div class="verticalSection">
+                        <p>Elimina tutti gli item del canale dal database e svuota la cache. Jellyfin li ricreerà da zero alla prossima navigazione, usando le immagini aggiornate degli attori.</p>
+                    </div>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="RefreshChannelBtn" class="raised emby-button">
+                        <span>&#128260; Aggiorna metadati canale</span>
+                    </button>
+                    <div id="RefreshChannelStatus" class="ai-status"></div>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="RefreshPeopleBtn" class="raised emby-button ai-load-btn">
+                        <span>&#128247; Aggiorna immagini attori</span>
+                    </button>
+                    <div id="RefreshPeopleStatus" class="ai-status"></div>
+                </div>
+
+                <!-- ===== Pulsante Home ===== -->
+                <div class="verticalSection ai-section">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Pulsante nella Home</h2>
+                    </div>
+                    <div class="verticalSection">
+                        <p>Aggiunge un pulsante &#127914; fisso su tutte le pagine Jellyfin che apre direttamente l'Indice Attori. Dopo ogni aggiornamento di Jellyfin clicca "Inietta" per ripristinarlo.</p>
+                    </div>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="InjectUiBtn" class="raised emby-button">
+                        <span>&#127914; Inietta pulsante nella Home</span>
+                    </button>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="RemoveUiBtn" class="raised emby-button ai-load-btn">
+                        <span>&#10006; Rimuovi pulsante dalla Home</span>
+                    </button>
+                    <div id="InjectUiStatus" class="ai-status"></div>
+                </div>
+
+                <!-- ===== Actors Index Viewer ===== -->
+                <div class="verticalSection ai-section">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Indice Attori</h2>
+                    </div>
+                    <div class="verticalSection">
+                        <p>Visualizza tutti gli attori presenti nella libreria con il conteggio delle apparizioni.</p>
+                    </div>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <a href="/web/configurationpage?name=ActorsBrowse"
+                       is="emby-button"
+                       class="raised emby-button ai-browse-link">
+                        <span>&#127914; Apri pagina Indice Attori</span>
+                    </a>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="LoadActorsIndexBtn" class="raised emby-button ai-load-btn">
+                        <span>Carica Indice Attori (qui sotto)</span>
+                    </button>
+                    <div id="ActorsIndexStatus" class="ai-status"></div>
+                    <div id="ActorsIndexTableContainer" class="ai-table-wrap ai-hidden">
+                        <table class="ai-table">
+                            <thead>
+                                <tr>
+                                    <th class="ai-th">Attore</th>
+                                    <th class="ai-th ai-th--center">Apparizioni</th>
+                                    <th class="ai-th">Titoli</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ActorsIndexTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            var ActorsIndexConfig = {
+                pluginUniqueId: '17d0c3ac-c0d1-48d7-ba4e-57cb9dac7fa2'
+            };
+
+            $('#ActorsIndexConfigPage').on('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(ActorsIndexConfig.pluginUniqueId).then(function (config) {
+                    document.getElementById('Enabled').checked = config.Enabled ?? true;
+                    document.getElementById('MinimumAppearances').value = config.MinimumAppearances ?? 1;
+                    document.getElementById('ShowRoleName').checked = config.ShowRoleName ?? true;
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            $('#ActorsIndexConfigForm').on('submit', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(ActorsIndexConfig.pluginUniqueId).then(function (config) {
+                    config.Enabled = document.getElementById('Enabled').checked;
+                    config.MinimumAppearances = parseInt(document.getElementById('MinimumAppearances').value, 10) || 1;
+                    config.ShowRoleName = document.getElementById('ShowRoleName').checked;
+                    ApiClient.updatePluginConfiguration(ActorsIndexConfig.pluginUniqueId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+                return false;
+            });
+
+            document.getElementById('InjectUiBtn').addEventListener('click', function () {
+                var btn = this;
+                var statusEl = document.getElementById('InjectUiStatus');
+                btn.disabled = true;
+                statusEl.textContent = 'Operazione in corso\u2026';
+
+                fetch(ApiClient.getUrl('ActorsIndex/inject-ui'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.status === 'ok') {
+                        statusEl.textContent = '\u2714 Pulsante iniettato in ' + data.path + '. Ricarica Jellyfin per vederlo.';
+                    } else if (data.status === 'already_injected') {
+                        statusEl.textContent = '\u2714 Pulsante gi\u00e0 presente in ' + data.path + '.';
+                    } else {
+                        statusEl.textContent = '\u2716 ' + (data.error || JSON.stringify(data));
+                    }
+                    btn.disabled = false;
+                })
+                .catch(function () {
+                    statusEl.textContent = '\u2716 Errore. Controlla la console del browser.';
+                    btn.disabled = false;
+                });
+            });
+
+            document.getElementById('RemoveUiBtn').addEventListener('click', function () {
+                var btn = this;
+                var statusEl = document.getElementById('InjectUiStatus');
+                btn.disabled = true;
+                statusEl.textContent = 'Rimozione in corso\u2026';
+
+                fetch(ApiClient.getUrl('ActorsIndex/remove-ui'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.status === 'ok') {
+                        statusEl.textContent = '\u2714 Pulsante rimosso da ' + data.path + '. Ricarica per confermare.';
+                    } else if (data.status === 'not_injected') {
+                        statusEl.textContent = '\u2714 Pulsante non presente, nulla da rimuovere.';
+                    } else {
+                        statusEl.textContent = '\u2716 ' + (data.error || JSON.stringify(data));
+                    }
+                    btn.disabled = false;
+                })
+                .catch(function () {
+                    statusEl.textContent = '\u2716 Errore. Controlla la console del browser.';
+                    btn.disabled = false;
+                });
+            });
+
+            document.getElementById('RefreshChannelBtn').addEventListener('click', function () {
+                var btn = this;
+                var statusEl = document.getElementById('RefreshChannelStatus');
+                btn.disabled = true;
+                statusEl.textContent = 'Operazione in corso\u2026';
+
+                fetch(ApiClient.getUrl('ActorsIndex/refresh-channel'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    statusEl.textContent =
+                        '\u2714 Item eliminati dal DB: ' + data.itemsDeleted +
+                        ' \u2014 Cache svuotata: ' + (data.cacheCleared ? 's\u00ec' : 'no') +
+                        '. Alla prossima navigazione del canale gli item vengono ricreati da zero.';
+                    btn.disabled = false;
+                })
+                .catch(function () {
+                    statusEl.textContent = '\u2716 Errore durante il refresh. Controlla la console del browser.';
+                    btn.disabled = false;
+                });
+            });
+
+            document.getElementById('RefreshPeopleBtn').addEventListener('click', function () {
+                var btn = this;
+                var statusEl = document.getElementById('RefreshPeopleStatus');
+                btn.disabled = true;
+                statusEl.textContent = 'Operazione in corso\u2026';
+
+                fetch(ApiClient.getUrl('ActorsIndex/refresh-people'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    statusEl.textContent =
+                        '\u2714 ' + data.peopleQueued + ' attori in coda per aggiornamento immagini.' +
+                        ' Attendi qualche minuto e ricarica la pagina Indice Attori.';
+                    btn.disabled = false;
+                })
+                .catch(function () {
+                    statusEl.textContent = '\u2716 Errore. Controlla la console del browser.';
+                    btn.disabled = false;
+                });
+            });
+
+            document.getElementById('LoadActorsIndexBtn').addEventListener('click', function () {
+                var statusEl = document.getElementById('ActorsIndexStatus');
+                var tableContainer = document.getElementById('ActorsIndexTableContainer');
+                var tableBody = document.getElementById('ActorsIndexTableBody');
+
+                function escapeHtml(str) {
+                    return String(str)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                }
+
+                statusEl.textContent = 'Caricamento in corso\u2026';
+                tableContainer.classList.add('ai-hidden');
+                tableBody.innerHTML = '';
+
+                ApiClient.ajax({
+                    url: ApiClient.getUrl('ActorsIndex/actors-index'),
+                    type: 'GET',
+                    dataType: 'json'
+                }).then(function (result) {
+                    statusEl.textContent = 'Trovati ' + result.totalActors + ' attori.';
+
+                    var maxItems = 6;
+                    result.actors.forEach(function (actor) {
+                        var shownItems = actor.items.slice(0, maxItems);
+                        var titlesHtml = shownItems.map(function (i) {
+                            var url = ApiClient.serverAddress() + '/web/index.html#!/details?id=' + i.itemId;
+                            var label = escapeHtml(i.itemName) + (i.role ? ' <em>(' + escapeHtml(i.role) + ')</em>' : '');
+                            return '<a href="' + url + '" class="ai-link">' + label + '</a>';
+                        }).join(', ');
+
+                        if (actor.items.length > maxItems) {
+                            titlesHtml += '&nbsp;<em>\u2026 e altri ' + (actor.items.length - maxItems) + '</em>';
+                        }
+
+                        var row = document.createElement('tr');
+                        row.innerHTML =
+                            '<td class="ai-td">' + escapeHtml(actor.name) + '</td>' +
+                            '<td class="ai-td--center">' + actor.appearances + '</td>' +
+                            '<td class="ai-td--small">' + titlesHtml + '</td>';
+                        tableBody.appendChild(row);
+                    });
+
+                    tableContainer.classList.remove('ai-hidden');
+                }).catch(function (err) {
+                    statusEl.textContent = 'Errore nel caricamento. Controlla la console del browser.';
+                    console.error('ActorsIndex error:', err);
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>

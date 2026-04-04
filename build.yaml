@@ -1,16 +1,20 @@
 ---
-name: "Template"
-guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
+name: "Actors Index"
+guid: "17d0c3ac-c0d1-48d7-ba4e-57cb9dac7fa2"
 version: "1.0.0.0"
-targetAbi: "10.9.0.0"
-framework: "net8.0"
-overview: "Short description about your plugin"
+targetAbi: "10.11.0.0"
+framework: "net9.0"
+overview: "Browsable index of all actors in your library with appearance counts and thumbnails."
 description: >
-  This is a longer description that can span more than one
-  line and include details about your plugin.
+  Actors Index scans your Jellyfin library and builds a full-screen browsable grid of all
+  actors and actresses, showing how many titles each one appears in.
+  Features include real-time search, pagination, sort by appearances or name,
+  a Jellyfin channel integration, and a floating home button injectable into the Jellyfin UI.
 category: "General"
-owner: "jellyfin"
+owner: "cocom"
 artifacts:
-- "Jellyfin.Plugin.Template.dll"
+- "Jellyfin.Plugin.ActorsIndex.dll"
+- "meta.json"
+- "thumb.png"
 changelog: >
-  changelog
+  1.0.0.0 - Initial public release.

@@ -2,7 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <RootNamespace>Jellyfin.Plugin.Template</RootNamespace>
+    <Version>1.0.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <RootNamespace>Jellyfin.Plugin.ActorsIndex</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
@@ -11,10 +14,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.9.11" >
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.6" >
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Jellyfin.Model" Version="10.9.11">
+    <PackageReference Include="Jellyfin.Model" Version="10.11.6">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>
@@ -28,6 +31,21 @@
   <ItemGroup>
     <None Remove="Configuration\configPage.html" />
     <EmbeddedResource Include="Configuration\configPage.html" />
+    <None Remove="Configuration\actorsBrowse.html" />
+    <EmbeddedResource Include="Configuration\actorsBrowse.html" />
+    <None Remove="Images\channel_icon.png" />
+    <EmbeddedResource Include="Images\channel_icon.png" />
+    <None Remove="Images\thumb.png" />
+    <EmbeddedResource Include="Images\thumb.png">
+      <LogicalName>Jellyfin.Plugin.ActorsIndex.thumb.png</LogicalName>
+    </EmbeddedResource>
+    <Content Include="Images\thumb.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <TargetPath>thumb.png</TargetPath>
+    </Content>
+    <Content Include="meta.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
