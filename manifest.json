@@ -9,6 +9,14 @@
     "owner": "cocomeros",
     "versions": [
       {
+        "version": "1.0.0.1",
+        "changelog": "Auto-release: compilato per Jellyfin 10.11.8.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/cocomeros/Jellyfin.Plugin.ActorsIndex/releases/download/v1.0.0.1/Jellyfin.Plugin.ActorsIndex_1.0.0.1.zip",
+        "checksum": "28e8dc6e7b31c168c6f309d70392d0d2",
+        "timestamp": "2026-05-07T20:31:26Z"
+      },
+      {
         "version": "1.0.0.0",
         "changelog": "Initial public release.",
         "targetAbi": "10.11.0.0",
