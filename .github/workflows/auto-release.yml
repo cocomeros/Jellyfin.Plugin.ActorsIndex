@@ -1,0 +1,193 @@
+name: '🤖 Auto Release'
+
+# Triggered when Renovate merges a PR that updates Jellyfin.Controller,
+# or manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Jellyfin.Plugin.ActorsIndex/Jellyfin.Plugin.ActorsIndex.csproj'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Use a PAT or the default token to allow pushing back to main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Guard: skip if this commit was created by this workflow itself ──
+      - name: Check commit author
+        id: guard
+        run: |
+          AUTHOR=$(git log -1 --format='%ae')
+          if [[ "$AUTHOR" == "github-actions[bot]@users.noreply.github.com" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Commit from github-actions bot – skipping to avoid loop."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Read versions from csproj ────────────────────────────────────────
+      - name: Read versions
+        if: steps.guard.outputs.skip == 'false'
+        id: versions
+        run: |
+          PLUGIN=$(grep -oP '(?<=<Version>)[^<]+' \
+            Jellyfin.Plugin.ActorsIndex/Jellyfin.Plugin.ActorsIndex.csproj | head -1)
+          JVER=$(grep -oP '(?<=Jellyfin\.Controller" Version=")[^"]+' \
+            Jellyfin.Plugin.ActorsIndex/Jellyfin.Plugin.ActorsIndex.csproj | head -1)
+          echo "plugin=$PLUGIN"   >> "$GITHUB_OUTPUT"
+          echo "jellyfin=$JVER"   >> "$GITHUB_OUTPUT"
+          echo "Plugin: $PLUGIN  |  Jellyfin.Controller: $JVER"
+
+      # ── Compute new plugin version (bump 4th component) ─────────────────
+      - name: Compute new plugin version
+        if: steps.guard.outputs.skip == 'false'
+        id: newver
+        run: |
+          IFS='.' read -r a b c d <<< "${{ steps.versions.outputs.plugin }}"
+          d=$((d + 1))
+          NEW="$a.$b.$c.$d"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "New plugin version: $NEW"
+
+      # ── Check if release for new version already exists ──────────────────
+      - name: Check existing release
+        if: steps.guard.outputs.skip == 'false'
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V="${{ steps.newver.outputs.version }}"
+          if gh release view "v$V" &>/dev/null; then
+            echo "exists=true"  >> "$GITHUB_OUTPUT"
+            echo "Release v$V already exists – nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Setup .NET ───────────────────────────────────────────────────────
+      - uses: actions/setup-dotnet@v4
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        with:
+          dotnet-version: '9.0.x'
+
+      # ── Patch version numbers in all files ──────────────────────────────
+      - name: Patch version in csproj
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        run: |
+          PVER="${{ steps.newver.outputs.version }}"
+          JVER="${{ steps.versions.outputs.jellyfin }}"
+          CSPROJ="Jellyfin.Plugin.ActorsIndex/Jellyfin.Plugin.ActorsIndex.csproj"
+          sed -i "s|<Version>[^<]*</Version>|<Version>$PVER</Version>|g"                 "$CSPROJ"
+          sed -i "s|<AssemblyVersion>[^<]*</AssemblyVersion>|<AssemblyVersion>$PVER</AssemblyVersion>|g" "$CSPROJ"
+          sed -i "s|<FileVersion>[^<]*</FileVersion>|<FileVersion>$PVER</FileVersion>|g" "$CSPROJ"
+
+      - name: Patch meta.json
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        run: |
+          PVER="${{ steps.newver.outputs.version }}"
+          JVER="${{ steps.versions.outputs.jellyfin }}"
+          python3 - <<PYEOF
+          import json, sys
+          with open('Jellyfin.Plugin.ActorsIndex/meta.json') as f:
+              data = json.load(f)
+          data['version']   = '$PVER'
+          data['changelog'] = 'Auto-release: compilato per Jellyfin $JVER'
+          from datetime import datetime, timezone
+          data['timestamp'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          with open('Jellyfin.Plugin.ActorsIndex/meta.json', 'w') as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+          PYEOF
+
+      # ── Build ────────────────────────────────────────────────────────────
+      - name: Build Release
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        run: |
+          dotnet publish --configuration=Release \
+            Jellyfin.Plugin.ActorsIndex.sln \
+            /property:GenerateFullPaths=true \
+            /consoleloggerparameters:NoSummary
+
+      # ── Package ──────────────────────────────────────────────────────────
+      - name: Create ZIP and compute MD5
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        id: package
+        run: |
+          PVER="${{ steps.newver.outputs.version }}"
+          OUT="Jellyfin.Plugin.ActorsIndex/bin/Release/net9.0/publish"
+          ZIP="Jellyfin.Plugin.ActorsIndex_${PVER}.zip"
+          zip -j "$ZIP" "$OUT/Jellyfin.Plugin.ActorsIndex.dll" "$OUT/meta.json" "$OUT/thumb.png"
+          MD5=$(md5sum "$ZIP" | cut -d' ' -f1)
+          echo "zip=$ZIP"   >> "$GITHUB_OUTPUT"
+          echo "md5=$MD5"   >> "$GITHUB_OUTPUT"
+          echo "ZIP: $ZIP  |  MD5: $MD5"
+
+      # ── Update manifest.json ─────────────────────────────────────────────
+      - name: Update manifest.json
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        run: |
+          PVER="${{ steps.newver.outputs.version }}"
+          JVER="${{ steps.versions.outputs.jellyfin }}"
+          MD5="${{ steps.package.outputs.md5 }}"
+          SOURCE_URL="https://github.com/${{ github.repository }}/releases/download/v${PVER}/Jellyfin.Plugin.ActorsIndex_${PVER}.zip"
+          python3 - <<PYEOF
+          import json
+          from datetime import datetime, timezone
+
+          # Compute targetAbi: keep only major.minor, set patch and build to 0
+          jver_parts = '$JVER'.split('.')
+          target_abi = f"{jver_parts[0]}.{jver_parts[1]}.0.0"
+
+          with open('manifest.json') as f:
+              data = json.load(f)
+
+          new_entry = {
+              "version":    '$PVER',
+              "changelog":  'Auto-release: compilato per Jellyfin $JVER.',
+              "targetAbi":  target_abi,
+              "sourceUrl":  '$SOURCE_URL',
+              "checksum":   '$MD5',
+              "timestamp":  datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+          }
+          data[0]['versions'].insert(0, new_entry)
+
+          with open('manifest.json', 'w') as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+          print(f"manifest.json aggiornato: v$PVER  targetAbi={target_abi}")
+          PYEOF
+
+      # ── Commit & push all changes ────────────────────────────────────────
+      - name: Commit and push
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            Jellyfin.Plugin.ActorsIndex/Jellyfin.Plugin.ActorsIndex.csproj \
+            Jellyfin.Plugin.ActorsIndex/meta.json \
+            manifest.json
+          git commit -m "Auto-release v${{ steps.newver.outputs.version }} per Jellyfin ${{ steps.versions.outputs.jellyfin }}"
+          git push
+
+      # ── GitHub Release ───────────────────────────────────────────────────
+      - name: Create GitHub Release
+        if: steps.guard.outputs.skip == 'false' && steps.check.outputs.exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PVER="${{ steps.newver.outputs.version }}"
+          JVER="${{ steps.versions.outputs.jellyfin }}"
+          gh release create "v${PVER}" "${{ steps.package.outputs.zip }}" \
+            --title "v${PVER} — Jellyfin ${JVER}" \
+            --notes "Release automatica compilata per Jellyfin **${JVER}**.
+
+Installabile direttamente dalla pagina impostazioni del plugin → *Aggiornamento Plugin* → **Controlla aggiornamenti**." \
+            --latest

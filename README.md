@@ -1,152 +1,114 @@
-# Jellyfin Actors Index Plugin
+# Actors Index — Plugin per Jellyfin
 
-A [Jellyfin](https://jellyfin.org) plugin that builds a browsable index of all actors in your media library, with appearance counts, thumbnails, and direct navigation to their biography page.
+Sfoglia tutti gli attori della tua libreria Jellyfin in un'unica schermata: griglia completa con foto, numero di apparizioni e collegamento diretto alla loro biografia.
 
-## Features
+![Actors Index screenshot](Jellyfin.Plugin.ActorsIndex/Images/thumb.png)
 
-- **Actors Index page** — full-screen grid of all actors/actresses, sortable by appearances or name A→Z
-- **Search** — real-time filter by actor name
-- **Pagination** — configurable page size (default 60 actors per page)
-- **Floating home button** — inject a persistent 🎬 button on all Jellyfin pages for one-click access
-- **Channel integration** — actors accessible as a Jellyfin channel in the home screen sidebar
-- **Minimum appearances filter** — hide actors with fewer than N appearances
-- **API endpoints** — `/ActorsIndex/actors-index`, `/ActorsIndex/library-stats`, and more
+## Funzionalità
 
-## Screenshots
+- **Griglia attori** — tutti gli attori/attrici ordinabili per numero di apparizioni o nome A→Z
+- **Ricerca in tempo reale** — filtra per nome mentre scrivi
+- **Paginazione** — dimensione pagina configurabile (default 60 attori per pagina)
+- **Pulsante flottante** — aggiungi un pulsante 🎬 persistente su tutte le pagine Jellyfin
+- **Integrazione canale** — attori accessibili come canale Jellyfin nella home
+- **Filtro per apparizioni** — nascondi attori con meno di N apparizioni
+- **Aggiornamento automatico** — si aggiorna da solo dalla pagina impostazioni, senza compilazione manuale
 
-> *Coming soon*
+## Requisiti
 
-## Requirements
+- Jellyfin **10.11.x** o successivo
+- .NET 9 (incluso in Jellyfin 10.11+)
 
-- Jellyfin **10.11.x** or later
-- .NET 9 runtime (bundled with Jellyfin 10.11+)
+## Installazione
 
-## Installation
+### Metodo A — Repository personalizzato (consigliato)
 
-### Option A — Add the custom repository (recommended)
+1. In Jellyfin vai su **Dashboard → Plugin → Repository**
+2. Clicca **+** e aggiungi:
+   - Nome: `Actors Index`
+   - URL: `https://raw.githubusercontent.com/cocomeros/Jellyfin.Plugin.ActorsIndex/main/manifest.json`
+3. Vai su **Dashboard → Plugin → Catalogo**, trova **Actors Index**, clicca **Installa**
+4. Riavvia Jellyfin
 
-1. In Jellyfin, go to **Dashboard → Plugins → Repositories**
-2. Click **+** and add:
-   - Name: `Actors Index`
-   - URL: `https://raw.githubusercontent.com/cocomeros/Jellyfin.Plugin.ActorsIndex/master/manifest.json`
-3. Go to **Dashboard → Plugins → Catalog**, find **Actors Index**, click **Install**
-4. Restart Jellyfin
+### Metodo B — Installazione manuale
 
-### Option B — Manual installation
-
-1. Download the latest `Jellyfin.Plugin.ActorsIndex_x.x.x.x.zip` from the [Releases](https://github.com/cocomeros/Jellyfin.Plugin.ActorsIndex/releases) page
-2. Extract and copy all files into your Jellyfin plugins folder:
+1. Scarica l'ultimo `Jellyfin.Plugin.ActorsIndex_x.x.x.x.zip` dalla pagina [Releases](https://github.com/cocomeros/Jellyfin.Plugin.ActorsIndex/releases)
+2. Estrai e copia tutti i file nella cartella plugin di Jellyfin:
    - **Linux**: `/var/lib/jellyfin/plugins/ActorsIndex/`
    - **Windows**: `%LOCALAPPDATA%\jellyfin\plugins\ActorsIndex\`
-3. Restart Jellyfin
+3. Riavvia Jellyfin
 
-## First-use setup
+## Configurazione iniziale
 
-After installing and restarting Jellyfin:
+Dopo aver installato e riavviato Jellyfin:
 
-1. Go to **Dashboard → Plugins → Actors Index → Settings**
-2. *(Optional)* Enable the plugin and set minimum appearances
-3. In the **"Pulsante nella Home"** section, click **🎬 Inietta pulsante nella Home** — this adds a persistent floating button on every Jellyfin page
+1. Vai su **Dashboard → Plugin → Actors Index → Impostazioni**
+2. Nella sezione **"Pulsante nella Home"** clicca **🎬 Inietta pulsante nella Home**
+   — questo aggiunge un pulsante persistente su tutte le pagine Jellyfin
 
-> **Note (Linux only):** The inject feature requires write permission on `/usr/share/jellyfin/web/index.html`.
-> To grant it permanently, add a systemd drop-in:
+> **Solo Linux:** la funzione "Inietta" richiede il permesso di scrittura su `/usr/share/jellyfin/web/index.html`.
+> Per concederlo in modo permanente, esegui questo comando **una volta sola**:
 > ```bash
-> sudo mkdir -p /etc/systemd/system/jellyfin.service.d
-> sudo tee /etc/systemd/system/jellyfin.service.d/fix-webroot-perms.conf << 'EOF'
-> [Service]
-> ExecStartPre=/bin/chown root:jellyfin /usr/share/jellyfin/web/index.html
-> ExecStartPre=/bin/chmod 664 /usr/share/jellyfin/web/index.html
-> EOF
-> sudo systemctl daemon-reload
+> sudo bash -c 'mkdir -p /etc/systemd/system/jellyfin.service.d && printf "[Service]\nExecStartPre=+/bin/chown jellyfin /usr/share/jellyfin/web/index.html\n" > /etc/systemd/system/jellyfin.service.d/fix-webroot-perms.conf && systemctl daemon-reload && systemctl restart jellyfin'
 > ```
-> After a Jellyfin update, click **Inietta** again to restore the button.
+> Dopo un aggiornamento di Jellyfin, clicca di nuovo **"Inietta"** per ripristinare il pulsante.
 
-## Maintenance
+---
 
-### After a Jellyfin update
+## Cosa fare dopo un aggiornamento di Jellyfin
 
-If the floating button disappears, go to **Settings → Pulsante nella Home → 🎬 Inietta pulsante nella Home**.
+### Il pulsante 🎬 è sparito dalla Home
 
-### Phantom seasons / duplicate episodes
+Jellyfin ha sovrascritto `index.html` durante l'aggiornamento.
 
-If the library shows phantom seasons (e.g. "Season 20", "Unknown Season") caused by metadata provider runs:
+**Soluzione:** Dashboard → Plugin → Actors Index → **"Inietta pulsante nella Home"**. Fine.
 
-1. Go to **Dashboard → Scheduled Tasks → Clean up media library** and run it
-2. Or right-click the series → **Refresh metadata → Replace all metadata** (then re-run the task)
+---
 
-## Building from source
+### Errore rosso al click su "Inietta" (o "Rimuovi")
+
+Il plugin è compilato per la versione precedente di Jellyfin e non è più compatibile.
+
+**Soluzione in 4 click:**
+
+1. Dashboard → Plugin → Actors Index → **"Controlla aggiornamenti"**
+2. Se appare una versione più recente → clicca **"Scarica e installa aggiornamento"**
+3. Clicca **"Riavvia Jellyfin"**
+4. Clicca **"Inietta pulsante nella Home"**
+
+✅ Nessun terminale, nessuna compilazione.
+
+---
+
+### Errore anche dopo l'aggiornamento del plugin (solo Linux)
+
+Dopo `apt upgrade jellyfin` su Debian/Ubuntu, `index.html` torna di proprietà di `root` e il plugin non ci può scrivere.
+
+**Soluzione:** riesegui il comando una-tantum indicato nella sezione "Configurazione iniziale" qui sopra. Va rifatto solo se disinstalli e reinstalli Jellyfin completamente.
+
+---
+
+## Come funziona l'aggiornamento automatico
+
+Il plugin si aggiorna automaticamente senza che tu debba compilare nulla:
+
+1. Quando Jellyfin pubblica una nuova versione, **Renovate** apre automaticamente una Pull Request su questo repository per aggiornare le dipendenze
+2. Alla chiusura della PR, **GitHub Actions** compila il plugin, crea uno ZIP firmato e pubblica una nuova [Release](https://github.com/cocomeros/Jellyfin.Plugin.ActorsIndex/releases)
+3. Tu clicchi **"Controlla aggiornamenti"** nelle impostazioni del plugin — fa tutto da solo
+
+## Compilazione dal sorgente (solo sviluppatori)
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/Jellyfin.Plugin.ActorsIndex.git
+git clone https://github.com/cocomeros/Jellyfin.Plugin.ActorsIndex.git
 cd Jellyfin.Plugin.ActorsIndex
 dotnet publish --configuration=Release Jellyfin.Plugin.ActorsIndex.sln
 ```
 
 Output: `Jellyfin.Plugin.ActorsIndex/bin/Release/net9.0/publish/`
 
-## License
+## Licenza
 
 [GPL-3.0](LICENSE)
-
-   ```
-      dotnet new Jellyfin-plugin -name MyPlugin
-   ```
-
-If you'd rather start from scratch keep going on to step one. This assumes no specific editor or IDE and requires only the command line with dotnet in the path.
-
-## 1. Initialize Your Project
-
-Make a new dotnet standard project with the following command, it will make a directory for itself.
-
-```
-dotnet new classlib -f net9.0 -n MyJellyfinPlugin
-```
-
-Now add the Jellyfin shared libraries.
-
-```
-dotnet add package Jellyfin.Model
-dotnet add package Jellyfin.Controller
-```
-
-You have an autogenerated Class1.cs file. You won't be needing this, so go ahead and delete it.
-
-Navigate to the csproj that was generated, and ensure that you modify the package references to exclude assets, so that unnecessary files aren't copied over.
-Skipping this step will prevent your plugin from registering correctly.
-```
-<ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.3">
-        <ExcludeAssets>runtime</ExcludeAssets>
-    </PackageReference>
-    <PackageReference Include="Jellyfin.Model" Version="10.11.3">
-        <ExcludeAssets>runtime</ExcludeAssets>
-    </PackageReference>
-</ItemGroup>
-```
-Note: Ensure the package reference version matches the install version of jellyfin server, otherwise the plugin will show as NotSupported.
-
-## 2. Set Up the Basics
-
-There are a few mandatory classes you'll need for a plugin so we need to make them.
-
-### PluginConfiguration
-
-Create a folder named "Configuration", and a PluginConfiguration.cs file inside.
-
-You can call it whatever you'd like really. This class is used to hold settings your plugin might need. We can leave it empty for now. This class should inherit from `MediaBrowser.Model.Plugins.BasePluginConfiguration`
-
-It should look something like the following:
-```c#
-    using MediaBrowser.Model.Plugins;
-    
-    namespace MyJellyfinPlugin.Configuration;
-    class PluginConfiguration : BasePluginConfiguration
-    {
-        
-    }
-```
-
-### Plugin
 
 This is the main class for your plugin and will reside in the root of your project. It will define your name, version and Id. It should inherit from `MediaBrowser.Common.Plugins.BasePlugin<PluginConfiguration>`
 
@@ -154,12 +116,12 @@ It should look something like the following:
 ```c#
     using MediaBrowser.Common.Plugins;
     using MyJellyfinPlugin.Configuration;
-    
+
     namespace MyJellyfinPlugin;
-    
+
     class Plugin : BasePlugin<PluginConfiguration>
     {
-        
+
     }
 ```
 

@@ -1,6 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Jellyfin.Plugin.ActorsIndex.Configuration;
 using Jellyfin.Plugin.ActorsIndex.Services;
 using MediaBrowser.Common.Configuration;
@@ -21,12 +27,15 @@ namespace Jellyfin.Plugin.ActorsIndex.Api;
 public class ActorsIndexController : ControllerBase
 {
     private const string InjectionTag = "\n    <!-- ActorsIndex --><script src=\"/ActorsIndex/ui-button.js\"></script><!-- /ActorsIndex -->";
+    private const string PluginManifestUrl = "https://raw.githubusercontent.com/cocomeros/Jellyfin.Plugin.ActorsIndex/main/manifest.json";
 
     private static readonly string[] WebRootCandidates =
     [
         "/usr/share/jellyfin/web",
         "/usr/lib/jellyfin/web",
+        "/usr/lib/jellyfin-web",
         "/opt/jellyfin/web",
+        "/var/lib/jellyfin/web",
     ];
 
     private readonly ActorsIndexService _actorsIndexService;
@@ -34,6 +43,7 @@ public class ActorsIndexController : ControllerBase
     private readonly IProviderManager _providerManager;
     private readonly IFileSystem _fileSystem;
     private readonly IApplicationPaths _appPaths;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ActorsIndexController"/> class.
@@ -43,18 +53,21 @@ public class ActorsIndexController : ControllerBase
     /// <param name="providerManager">The provider manager.</param>
     /// <param name="fileSystem">The file system.</param>
     /// <param name="appPaths">The application paths.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     public ActorsIndexController(
         ActorsIndexService actorsIndexService,
         ILibraryManager libraryManager,
         IProviderManager providerManager,
         IFileSystem fileSystem,
-        IApplicationPaths appPaths)
+        IApplicationPaths appPaths,
+        IHttpClientFactory httpClientFactory)
     {
         _actorsIndexService = actorsIndexService;
         _libraryManager = libraryManager;
         _providerManager = providerManager;
         _fileSystem = fileSystem;
         _appPaths = appPaths;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -341,5 +354,151 @@ public class ActorsIndexController : ControllerBase
         {
             peopleQueued = people.Count,
         });
+    }
+
+    // ── Self-update ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Checks GitHub for a newer version of this plugin.
+    /// </summary>
+    /// <returns>Version comparison result.</returns>
+    [HttpGet("check-update")]
+    public async Task<ActionResult> CheckUpdate()
+    {
+        try
+        {
+            using var client = _httpClientFactory.CreateClient();
+            var json = await client.GetStringAsync(new Uri(PluginManifestUrl)).ConfigureAwait(false);
+
+            using var doc = JsonDocument.Parse(json);
+            var versionsArray = doc.RootElement[0].GetProperty("versions");
+
+            Version? latestVersion = null;
+            string? latestVersionStr = null;
+
+            foreach (var entry in versionsArray.EnumerateArray())
+            {
+                var verStr = entry.GetProperty("version").GetString() ?? string.Empty;
+                if (Version.TryParse(verStr, out var parsed) && (latestVersion is null || parsed > latestVersion))
+                {
+                    latestVersion = parsed;
+                    latestVersionStr = verStr;
+                }
+            }
+
+            var current = Plugin.Instance?.Version ?? new Version(1, 0, 0, 0);
+            return Ok(new
+            {
+                currentVersion = current.ToString(),
+                latestVersion = latestVersionStr,
+                updateAvailable = latestVersion is not null && latestVersion > current,
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Downloads the latest plugin release from GitHub and installs it in-place.
+    /// Jellyfin must be restarted after this operation to load the new DLL.
+    /// </summary>
+    /// <returns>Update result.</returns>
+    [HttpPost("self-update")]
+    public async Task<ActionResult> SelfUpdate()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "actorsindex_upd_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var client = _httpClientFactory.CreateClient();
+
+            // 1. Fetch manifest from GitHub
+            var json = await client.GetStringAsync(new Uri(PluginManifestUrl)).ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var versionsArray = doc.RootElement[0].GetProperty("versions");
+
+            Version? latestVersion = null;
+            string? sourceUrl = null;
+            string? checksum = null;
+
+            foreach (var entry in versionsArray.EnumerateArray())
+            {
+                var verStr = entry.GetProperty("version").GetString() ?? string.Empty;
+                if (Version.TryParse(verStr, out var parsed) && (latestVersion is null || parsed > latestVersion))
+                {
+                    latestVersion = parsed;
+                    sourceUrl = entry.TryGetProperty("sourceUrl", out var su) ? su.GetString() : null;
+                    checksum = entry.TryGetProperty("checksum", out var cs) ? cs.GetString() : null;
+                }
+            }
+
+            var current = Plugin.Instance?.Version ?? new Version(1, 0, 0, 0);
+            if (latestVersion is null || latestVersion <= current)
+            {
+                return Ok(new { status = "up_to_date", version = current.ToString() });
+            }
+
+            if (string.IsNullOrEmpty(sourceUrl))
+            {
+                return StatusCode(500, new { error = "sourceUrl non presente nel manifest GitHub." });
+            }
+
+            // 2. Download ZIP
+            Directory.CreateDirectory(tempDir);
+            var zipBytes = await client.GetByteArrayAsync(new Uri(sourceUrl)).ConfigureAwait(false);
+
+            // 3. Verify MD5 checksum (MD5 used only for integrity, not security)
+#pragma warning disable CA5351
+            if (!string.IsNullOrEmpty(checksum))
+            {
+                var hash = Convert.ToHexString(MD5.HashData(zipBytes)).ToLowerInvariant();
+                if (!string.Equals(hash, checksum, StringComparison.OrdinalIgnoreCase))
+                {
+                    return StatusCode(500, new { error = $"Checksum MD5 non valido. Atteso: {checksum}, calcolato: {hash}" });
+                }
+            }
+#pragma warning restore CA5351
+
+            var zipPath = Path.Combine(tempDir, "update.zip");
+            await System.IO.File.WriteAllBytesAsync(zipPath, zipBytes).ConfigureAwait(false);
+
+            // 4. Extract ZIP
+            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, tempDir, overwriteFiles: true);
+
+            // 5. Copy .dll / .json / .png to the plugin directory
+            var pluginDir = Path.GetDirectoryName(typeof(Plugin).Assembly.Location)!;
+            var copied = new List<string>();
+
+            foreach (var filePath in Directory.GetFiles(tempDir))
+            {
+                var ext = Path.GetExtension(filePath).ToLowerInvariant();
+                if (ext is ".dll" or ".json" or ".png")
+                {
+                    var dest = Path.Combine(pluginDir, Path.GetFileName(filePath));
+                    System.IO.File.Copy(filePath, dest, overwrite: true);
+                    copied.Add(Path.GetFileName(filePath));
+                }
+            }
+
+            return Ok(new
+            {
+                status = "updated",
+                newVersion = latestVersion.ToString(),
+                files = copied,
+                restartRequired = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
     }
 }

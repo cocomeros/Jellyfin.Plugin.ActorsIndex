@@ -103,6 +103,29 @@
                     <div id="RefreshPeopleStatus" class="ai-status"></div>
                 </div>
 
+                <!-- ===== Aggiornamento Plugin ===== -->
+                <div class="verticalSection ai-section">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Aggiornamento Plugin</h2>
+                    </div>
+                    <div class="verticalSection">
+                        <p>Controlla se è disponibile una versione più recente del plugin (compilata automaticamente ad ogni aggiornamento di Jellyfin). Se presente, scarica e installa in un click.</p>
+                    </div>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="CheckUpdateBtn" class="raised emby-button">
+                        <span>&#128260; Controlla aggiornamenti</span>
+                    </button>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="SelfUpdateBtn" class="raised emby-button ai-load-btn" style="display:none">
+                        <span>&#11014; Scarica e installa aggiornamento</span>
+                    </button>
+                    <!-- is="emby-button" is required by the Jellyfin web framework -->
+                    <button is="emby-button" type="button" id="RestartAfterUpdateBtn" class="raised emby-button ai-load-btn" style="display:none">
+                        <span>&#128260; Riavvia Jellyfin</span>
+                    </button>
+                    <div id="UpdateStatus" class="ai-status"></div>
+                </div>
+
                 <!-- ===== Pulsante Home ===== -->
                 <div class="verticalSection ai-section">
                     <div class="sectionTitleContainer flex align-items-center">
@@ -185,6 +208,102 @@
                 return false;
             });
 
+            document.getElementById('CheckUpdateBtn').addEventListener('click', function () {
+                var btn = this;
+                var statusEl    = document.getElementById('UpdateStatus');
+                var installBtn  = document.getElementById('SelfUpdateBtn');
+                var restartBtn  = document.getElementById('RestartAfterUpdateBtn');
+
+                btn.disabled = true;
+                installBtn.style.display  = 'none';
+                restartBtn.style.display  = 'none';
+                statusEl.textContent = 'Controllo in corso\u2026';
+
+                fetch(ApiClient.getUrl('ActorsIndex/check-update'), {
+                    headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) {
+                        statusEl.textContent = '\u2716 Errore: ' + data.error;
+                    } else if (data.updateAvailable) {
+                        statusEl.textContent = '\u2B06 Disponibile v' + data.latestVersion + ' (attuale: v' + data.currentVersion + ')';
+                        installBtn.style.display = '';
+                    } else {
+                        statusEl.textContent = '\u2714 Plugin gi\u00e0 aggiornato (v' + data.currentVersion + ')';
+                    }
+                    btn.disabled = false;
+                })
+                .catch(function (err) {
+                    statusEl.textContent = '\u2716 Errore di rete: ' + (err && err.message ? err.message : String(err));
+                    btn.disabled = false;
+                });
+            });
+
+            document.getElementById('SelfUpdateBtn').addEventListener('click', function () {
+                var btn = this;
+                var statusEl   = document.getElementById('UpdateStatus');
+                var restartBtn = document.getElementById('RestartAfterUpdateBtn');
+
+                btn.disabled = true;
+                statusEl.textContent = 'Download e installazione in corso\u2026';
+
+                fetch(ApiClient.getUrl('ActorsIndex/self-update'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                })
+                .then(function (r) {
+                    var httpStatus = r.status;
+                    return r.text().then(function (body) {
+                        var data;
+                        try { data = JSON.parse(body); } catch (e) { data = null; }
+                        return { httpStatus: httpStatus, data: data, rawBody: body };
+                    });
+                })
+                .then(function (result) {
+                    var data = result.data;
+                    if (data === null) {
+                        statusEl.textContent = '\u2716 HTTP ' + result.httpStatus + ' \u2014 risposta non valida: ' + result.rawBody.substring(0, 200);
+                        btn.disabled = false;
+                        return;
+                    }
+                    if (data.status === 'updated') {
+                        statusEl.textContent = '\u2714 Aggiornato a v' + data.newVersion + '. Riavvia Jellyfin per completare.';
+                        btn.style.display   = 'none';
+                        restartBtn.style.display = '';
+                    } else if (data.status === 'up_to_date') {
+                        statusEl.textContent = '\u2714 Plugin gi\u00e0 aggiornato (v' + data.version + ')';
+                        btn.disabled = false;
+                    } else {
+                        statusEl.textContent = '\u2716 HTTP ' + result.httpStatus + ' \u2014 ' + (data.error || JSON.stringify(data));
+                        btn.disabled = false;
+                    }
+                })
+                .catch(function (err) {
+                    statusEl.textContent = '\u2716 Errore: ' + (err && err.message ? err.message : String(err));
+                    btn.disabled = false;
+                });
+            });
+
+            document.getElementById('RestartAfterUpdateBtn').addEventListener('click', function () {
+                var btn = this;
+                var statusEl = document.getElementById('UpdateStatus');
+                btn.disabled = true;
+                statusEl.textContent = 'Riavvio Jellyfin in corso\u2026';
+
+                fetch(ApiClient.getUrl('System/Restart'), {
+                    method: 'POST',
+                    headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                })
+                .then(function () {
+                    statusEl.textContent = '\u2714 Riavvio avviato. Attendi qualche secondo e ricarica la pagina.';
+                })
+                .catch(function () {
+                    // Server chiude la connessione durante il riavvio — è normale
+                    statusEl.textContent = '\u2714 Riavvio avviato. Attendi qualche secondo e ricarica la pagina.';
+                });
+            });
+
             document.getElementById('InjectUiBtn').addEventListener('click', function () {
                 var btn = this;
                 var statusEl = document.getElementById('InjectUiStatus');
@@ -195,19 +314,32 @@
                     method: 'POST',
                     headers: { 'X-Emby-Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
                 })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
+                .then(function (r) {
+                    var status = r.status;
+                    return r.text().then(function (body) {
+                        var data;
+                        try { data = JSON.parse(body); } catch (e) { data = null; }
+                        return { httpStatus: status, data: data, rawBody: body };
+                    });
+                })
+                .then(function (result) {
+                    var data = result.data;
+                    if (data === null) {
+                        statusEl.textContent = '\u2716 HTTP ' + result.httpStatus + ' \u2014 Risposta non JSON. Plugin non caricato o endpoint non trovato. Body: ' + result.rawBody.substring(0, 200);
+                        btn.disabled = false;
+                        return;
+                    }
                     if (data.status === 'ok') {
                         statusEl.textContent = '\u2714 Pulsante iniettato in ' + data.path + '. Ricarica Jellyfin per vederlo.';
                     } else if (data.status === 'already_injected') {
                         statusEl.textContent = '\u2714 Pulsante gi\u00e0 presente in ' + data.path + '.';
                     } else {
-                        statusEl.textContent = '\u2716 ' + (data.error || JSON.stringify(data));
+                        statusEl.textContent = '\u2716 HTTP ' + result.httpStatus + ' \u2014 ' + (data.error || JSON.stringify(data));
                     }
                     btn.disabled = false;
                 })
-                .catch(function () {
-                    statusEl.textContent = '\u2716 Errore. Controlla la console del browser.';
+                .catch(function (err) {
+                    statusEl.textContent = '\u2716 Errore di rete: ' + (err && err.message ? err.message : String(err));
                     btn.disabled = false;
                 });
             });
