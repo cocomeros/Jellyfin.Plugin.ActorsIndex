@@ -185,9 +185,8 @@ jobs:
         run: |
           PVER="${{ steps.newver.outputs.version }}"
           JVER="${{ steps.versions.outputs.jellyfin }}"
+          NOTES="Release automatica compilata per Jellyfin **${JVER}**.\n\nInstallabile direttamente dalla pagina impostazioni del plugin → *Aggiornamento Plugin* → **Controlla aggiornamenti**."
           gh release create "v${PVER}" "${{ steps.package.outputs.zip }}" \
             --title "v${PVER} — Jellyfin ${JVER}" \
-            --notes "Release automatica compilata per Jellyfin **${JVER}**.
-
-Installabile direttamente dalla pagina impostazioni del plugin → *Aggiornamento Plugin* → **Controlla aggiornamenti**." \
+            --notes "${NOTES}" \
             --latest
