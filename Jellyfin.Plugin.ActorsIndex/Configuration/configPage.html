@@ -13,6 +13,7 @@
         .ai-browse-link      { display: inline-flex; align-items: center; gap: 8px;
                                text-decoration: none; margin-bottom: 12px; }
         .ai-load-btn         { margin-left: 8px; }
+        .ai-hidden-btn       { display: none; }
 
         /* â”€â”€ Actors table â”€â”€ */
         .ai-table-wrap       { margin-top: 1em; overflow-x: auto; }
@@ -116,11 +117,11 @@
                         <span>&#128260; Controlla aggiornamenti</span>
                     </button>
                     <!-- is="emby-button" is required by the Jellyfin web framework -->
-                    <button is="emby-button" type="button" id="SelfUpdateBtn" class="raised emby-button ai-load-btn" style="display:none">
+                    <button is="emby-button" type="button" id="SelfUpdateBtn" class="raised emby-button ai-load-btn ai-hidden-btn">
                         <span>&#11014; Scarica e installa aggiornamento</span>
                     </button>
                     <!-- is="emby-button" is required by the Jellyfin web framework -->
-                    <button is="emby-button" type="button" id="RestartAfterUpdateBtn" class="raised emby-button ai-load-btn" style="display:none">
+                    <button is="emby-button" type="button" id="RestartAfterUpdateBtn" class="raised emby-button ai-load-btn ai-hidden-btn">
                         <span>&#128260; Riavvia Jellyfin</span>
                     </button>
                     <div id="UpdateStatus" class="ai-status"></div>
@@ -215,8 +216,8 @@
                 var restartBtn  = document.getElementById('RestartAfterUpdateBtn');
 
                 btn.disabled = true;
-                installBtn.style.display  = 'none';
-                restartBtn.style.display  = 'none';
+                installBtn.classList.add('ai-hidden-btn');
+                restartBtn.classList.add('ai-hidden-btn');
                 statusEl.textContent = 'Controllo in corso\u2026';
 
                 fetch(ApiClient.getUrl('ActorsIndex/check-update'), {
@@ -228,7 +229,7 @@
                         statusEl.textContent = '\u2716 Errore: ' + data.error;
                     } else if (data.updateAvailable) {
                         statusEl.textContent = '\u2B06 Disponibile v' + data.latestVersion + ' (attuale: v' + data.currentVersion + ')';
-                        installBtn.style.display = '';
+                        installBtn.classList.remove('ai-hidden-btn');
                     } else {
                         statusEl.textContent = '\u2714 Plugin gi\u00e0 aggiornato (v' + data.currentVersion + ')';
                     }
@@ -269,8 +270,8 @@
                     }
                     if (data.status === 'updated') {
                         statusEl.textContent = '\u2714 Aggiornato a v' + data.newVersion + '. Riavvia Jellyfin per completare.';
-                        btn.style.display   = 'none';
-                        restartBtn.style.display = '';
+                        btn.classList.add('ai-hidden-btn');
+                        restartBtn.classList.remove('ai-hidden-btn');
                     } else if (data.status === 'up_to_date') {
                         statusEl.textContent = '\u2714 Plugin gi\u00e0 aggiornato (v' + data.version + ')';
                         btn.disabled = false;

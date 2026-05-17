@@ -307,8 +307,17 @@ public class ActorsIndexController : ControllerBase
     if(window.Emby&&window.Emby.Page&&window.Emby.Page.show){window.Emby.Page.show(p);}
     else{window.location.hash=p;}
   }
+  function playing(){
+    var v=document.querySelectorAll('video');
+    for(var i=0;i<v.length;i++){if(!v[i].paused&&!v[i].ended)return true;}
+    return false;
+  }
+  function sync(){
+    var b=document.getElementById(ID);
+    if(b)b.style.display=playing()?'none':'flex';
+  }
   function add(){
-    if(document.getElementById(ID))return;
+    if(document.getElementById(ID)){sync();return;}
     var b=document.createElement('button');
     b.id=ID;
     b.title='Indice Attori';
@@ -316,7 +325,12 @@ public class ActorsIndexController : ControllerBase
     b.style.cssText='position:fixed;bottom:28px;right:28px;width:56px;height:56px;border-radius:50%;background:#0097e6;border:none;color:#fff;font-size:1.5em;cursor:pointer;z-index:9999;box-shadow:0 4px 18px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
     b.addEventListener('click',nav);
     document.body.appendChild(b);
+    sync();
   }
+  document.addEventListener('play',   sync,true);
+  document.addEventListener('pause',  sync,true);
+  document.addEventListener('ended',  sync,true);
+  document.addEventListener('emptied',sync,true);
   if(document.body){add();}else{document.addEventListener('DOMContentLoaded',add);}
   new MutationObserver(add).observe(document.documentElement,{childList:true,subtree:false});
 })();";
